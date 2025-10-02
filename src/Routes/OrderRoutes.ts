@@ -1,27 +1,106 @@
-import { Router } from "express";
+import express from "express";
 import { placeOrder, getAllOrders, getOrderById, cancelOrder } from "../controllers/Ordercontroller";
 import { authMiddleware } from "../middlewares/Authmiddlewares";
-import { io } from "../index"; // ✅ Make sure index.ts exports io
 
-const router = Router();
+const router = express.Router();
 
-// Place Order & Emit via Socket.IO
-router.post("/", authMiddleware, async (req, res) => {
-  try {
-    const createdOrder = await placeOrder(req, res);
-    if (createdOrder) {
-      io.emit("newOrder", createdOrder); // ✅ notify admins
-    }
-  } catch (err) {
-    console.error(err);
-    if (!res.headersSent) {
-      res.status(500).json({ success: false, message: "Failed to place order" });
-    }
-  }
-});
+/**
+ * @swagger
+ * tags:
+ *   name: Orders
+ *   description: Order management
+ */
 
-router.get("/", authMiddleware, getAllOrders);
-router.get("/:id", authMiddleware, getOrderById);
-router.delete("/:id", authMiddleware, cancelOrder);
+/**
+ * @swagger
+ * /api/order/:
+ *   post:
+ *     summary: Place an order from cart items
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       201:
+ *         description: Order placed successfully
+ *       400:
+ *         description: No cart items
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.post("/order/", authMiddleware, placeOrder);
+
+/**
+ * @swagger
+ * /api/order/:
+ *   get:
+ *     summary: Get all orders (admin sees all, user sees own)
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of orders
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get("/order/", authMiddleware, getAllOrders);
+
+/**
+ * @swagger
+ * /api/order/{id}:
+ *   get:
+ *     summary: Get order by ID
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Order ID
+ *     responses:
+ *       200:
+ *         description: Order details
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Order not found
+ *       500:
+ *         description: Server error
+ */
+router.get("/order/:id", authMiddleware, getOrderById);
+
+/**
+ * @swagger
+ * /api/order/{id}:
+ *   delete:
+ *     summary: Cancel an order
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Order ID
+ *     responses:
+ *       200:
+ *         description: Order canceled successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Order not found
+ *       500:
+ *         description: Server error
+ */
+router.delete("/order/:id", authMiddleware, cancelOrder);
 
 export default router;
