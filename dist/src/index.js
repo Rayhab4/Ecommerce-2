@@ -6,20 +6,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.io = void 0;
 const express_1 = __importDefault(require("express"));
 const mongoose_1 = __importDefault(require("mongoose"));
-const ProductRoutes_1 = __importDefault(require("./Routes/ProductRoutes"));
-const OrderRoutes_1 = __importDefault(require("./Routes/OrderRoutes"));
-const CartItemRoutes_1 = __importDefault(require("./Routes/CartItemRoutes"));
-const AuthRoutes_1 = __importDefault(require("./Routes/AuthRoutes"));
-const ContactRoutes_1 = __importDefault(require("./Routes/ContactRoutes"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const morgan_1 = __importDefault(require("morgan"));
 const cors_1 = __importDefault(require("cors"));
 const http_1 = require("http");
 const socket_io_1 = require("socket.io");
+const Routes_1 = require("./Routes");
+// Swagger
+const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
+const swagger_1 = __importDefault(require("./swagger"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const server = (0, http_1.createServer)(app);
-// ✅ create io instance
+// ✅ Socket.IO setup
 exports.io = new socket_io_1.Server(server, {
     cors: {
         origin: "http://localhost:5173",
@@ -33,27 +32,26 @@ exports.io.on("connection", (socket) => {
         console.log("Client disconnected:", socket.id);
     });
 });
+// Middleware
 app.use((0, morgan_1.default)("dev"));
-const PORT = process.env.PORT || 5000;
-app.use((0, cors_1.default)({
-    origin: "http://localhost:5173",
-    credentials: true,
-}));
+app.use((0, cors_1.default)({ origin: "http://localhost:5173", credentials: true }));
 app.use(express_1.default.json());
-app.use("/api/products", ProductRoutes_1.default);
-app.use("/api/order", OrderRoutes_1.default);
-app.use("/api/cart", CartItemRoutes_1.default);
-app.use("/api/auth", AuthRoutes_1.default);
-app.use("/api/contact", ContactRoutes_1.default);
+// Swagger UI
+app.use("/api-docs", swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.default));
+app.use(Routes_1.routers);
+// Root endpoint
 app.get("/", (req, res) => {
     res.json({ message: "Byakunze we", status: "200" });
 });
+// MongoDB connection + server start
+const PORT = process.env.PORT || 5000;
 mongoose_1.default
     .connect(process.env.DB_URL || "", {})
     .then(() => {
     console.log("MongoDB connected");
     server.listen(PORT, () => {
         console.log(`Server running on http://localhost:${PORT}`);
+        console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
     });
 })
     .catch((err) => console.error("MongoDB connection error:", err));
